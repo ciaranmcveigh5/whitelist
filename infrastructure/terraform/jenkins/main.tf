@@ -6,7 +6,21 @@ provider "aws" {
 
 # DATA
 
+data "aws_ami" "ubuntu" {
+  most_recent = true
 
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"] 
+}
 
 
 # VPC
@@ -19,12 +33,45 @@ resource "aws_vpc" "whitelist" {
 	}
 }
 
+# GATEWAYS
+
+resource "aws_internet_gateway" "whitelist_igw" {
+  vpc_id = "${aws_vpc.whitelist.id}"
+
+  tags {
+    Name = "whitelist_igw"
+  }
+}
+
+resource "aws_nat_gateway" "gw" {
+  allocation_id = "${aws_eip.nat_gw.id}"
+  subnet_id     = "${aws_subnet.public_a.id}"
+}
+
 # IAM ROLES
 
 resource "aws_iam_role" "test_role" {
   name = "test_role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
 
-  assume_role_policy = "${aws_iam_policy.jenkins.id}"
+resource "aws_iam_instance_profile" "jenkins_profile" {
+  name  = "jenkins_profile"
+  role = "${aws_iam_role.test_role.name}"
 }
 
 # IAM POLICIES
@@ -50,23 +97,52 @@ resource "aws_iam_policy" "jenkins" {
 EOF
 }
 
+# KEY PAIRS
+
+
+
 # SUBNETS
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public_a" {
 	vpc_id     = "${aws_vpc.whitelist.id}"
-	cidr_block = "10.0.1.0/24"
+	cidr_block = "10.0.5.0/24"
+	availability_zone = "eu-west-2a"
 
 	tags {
-		Name = "public"
+		Name = "public_a"
 	}
 }
 
-resource "aws_subnet" "private" {
+resource "aws_subnet" "public_b" {
 	vpc_id     = "${aws_vpc.whitelist.id}"
-	cidr_block = "10.0.2.0/24"
+	cidr_block = "10.0.6.0/24"
+	availability_zone = "eu-west-2b"
+
 
 	tags {
-		Name = "private"
+		Name = "public_b"
+	}
+}
+
+resource "aws_subnet" "private_a" {
+	vpc_id     = "${aws_vpc.whitelist.id}"
+	cidr_block = "10.0.3.0/24"
+	availability_zone = "eu-west-2a"
+
+
+	tags {
+		Name = "private_a"
+	}
+}
+
+resource "aws_subnet" "private_b" {
+	vpc_id     = "${aws_vpc.whitelist.id}"
+	cidr_block = "10.0.4.0/24"
+	availability_zone = "eu-west-2b"
+
+
+	tags {
+		Name = "private_b"
 	}
 }
 
@@ -74,7 +150,8 @@ resource "aws_subnet" "private" {
 
 resource "aws_elb" "whitelist" {
 	name               = "whiteliste-elb"
-	availability_zones = ["eu-west-2a", "eu-west-2b"]
+	security_groups = ["${aws_security_group.whitelist_elb.id}"]
+	subnets = ["${aws_subnet.public_a.id}"]
 
 	listener {
 		instance_port     = 8000
@@ -104,7 +181,8 @@ resource "aws_elb" "whitelist" {
 
 resource "aws_elb" "jenkins" {
 	name               = "jenkins-elb"
-	availability_zones = ["eu-west-2a", "eu-west-2b"]
+	security_groups = ["${aws_security_group.whitelist_elb.id}"]
+	subnets = ["${aws_subnet.public_a.id}"]
 
 	listener {
 		instance_port     = 8000
@@ -134,7 +212,22 @@ resource "aws_elb" "jenkins" {
 
 # SECURITY GROUPS
 
+resource "aws_security_group" "whitelist_elb" {
+	vpc_id     = "${aws_vpc.whitelist.id}"
+	name        = "whitelist_elb"
+	description = "elb security group"
+
+	ingress {
+		from_port   = 80
+		to_port     = 80
+		protocol    = "tcp"
+		cidr_blocks = ["0.0.0.0/0"]
+	}
+
+}
+
 resource "aws_security_group" "whitelist_base" {
+	vpc_id     = "${aws_vpc.whitelist.id}"
 	name        = "whitelist_base"
 	description = "Base security group"
 
@@ -162,18 +255,28 @@ resource "aws_security_group" "whitelist_base" {
 
 # EIP
 
-resource "aws_eip" "lb" {
+resource "aws_eip" "whitelist" {
 	instance = "${aws_instance.whitelist.id}"
+	vpc      = true
+}
+
+resource "aws_eip" "jenkins" {
+	instance = "${aws_instance.jenkins.id}"
+	vpc      = true
+}
+
+resource "aws_eip" "nat_gw" {
 	vpc      = true
 }
 
 # INSTANCES
 
 resource "aws_instance" "jenkins" {
-	ami = "ami-7d50491b"
+	ami = "${data.aws_ami.ubuntu.id}"
 	instance_type = "t2.micro"
 	security_groups = ["${aws_security_group.whitelist_base.id}"]
-	subnet_id = "${aws_subnet.public.id}"
+	subnet_id = "${aws_subnet.public_a.id}"
+	iam_instance_profile = "${aws_iam_instance_profile.jenkins_profile.name}"
 
 	tags {
 		Name = "jenkins"
@@ -182,10 +285,10 @@ resource "aws_instance" "jenkins" {
 
 resource "aws_instance" "whitelist" {
 	# count = 3
-	ami = "ami-7d50491b"
+	ami = "${data.aws_ami.ubuntu.id}"
 	instance_type = "t2.micro"
 	security_groups = ["${aws_security_group.whitelist_base.id}"]
-	subnet_id = "${aws_subnet.public.id}"
+	subnet_id = "${aws_subnet.public_a.id}"
 
 	tags {
 		# Name = "whitelist_${count.index}"
