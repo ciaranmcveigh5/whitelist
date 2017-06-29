@@ -20,5 +20,13 @@
     "passport-local": "^1.0.0",
     "passport-local-mongoose": "^4.0.0",
     "request": "^2.81.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/ciaranmcveigh5/whitelist.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ciaranmcveigh5/whitelist/issues"
+  },
+  "homepage": "https://github.com/ciaranmcveigh5/whitelist#readme"
 }
