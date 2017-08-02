@@ -1,0 +1,22 @@
+.sender {
+    background-color: #a9f441;
+    width: 60%;
+}
+
+.recipient {
+    background-color: #42f4f4;
+    text-align: right;
+    float: right;
+    width: 60%;
+}
+
+.container {
+    padding-left: 0px;
+    padding-right: 0px;
+    width: 100%;
+}
+
+.author {
+    font-family: 'Tangerine', cursive;
+    font-size: 24px;
+}

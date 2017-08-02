@@ -1,0 +1,77 @@
+<!-- views/messages.ejs -->
+<% include ../partials/header %>
+
+<link rel="stylesheet" href="/stylesheets/message.css">
+<link href="https://fonts.googleapis.com/css?family=Tangerine" rel="stylesheet">
+
+<script
+        src="https://code.jquery.com/jquery-3.2.1.slim.js"
+        integrity="sha256-tA8y0XqiwnpwmOIl3SGAcFl2RvxHjA8qp0+1uCGmRmg="
+        crossorigin="anonymous"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+<% include ../partials/navbar %>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="well">
+                <h3>Online Users</h3>
+                <ul class="list-group" id="users"></ul>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="chat" id="chat"></div>
+            <form id="messageForm">
+                <div class="form-group">
+                    <label>Enter Message</label>
+                    <textarea class="form-control" id="message"></textarea>
+                    <br/>
+                    <input type="submit" class="btn btn-primary" value="message">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function() {
+        var socket = io.connect();
+        var $messageForm = $('#messageForm');
+        var $message = $('#message');
+        var $chat = $('#chat');
+
+        socket.emit('retrieveMessage', {sender: '<%= sender.local.email %>', recipient: '<%= recipient.local.email %>'} );
+
+        $messageForm.submit(function(e) {
+            e.preventDefault();
+            socket.emit('sendMessage', {msg: $message.val(), sender: '<%= sender.local.email %>', recipient: '<%= recipient.local.email %>'} );
+            $message.val('');
+        });
+
+        socket.on('retrieveMessage', function(data) {
+            window.console&&console.log(data);
+        });
+
+        socket.on('newMessage', function(data) {
+            if (data.sender === '<%= sender.local.email %>') {
+                $chat.append('<div class="container">' + '<div class="well sender"><b><i>' + data.sender + '</b></i><br/>' + data.msg + '</div>' + '</div>');
+            } else {
+                $chat.append('<div class="container">' + '<div class="well recipient"><b><i>' + data.sender + '<</b></i><br/>' + data.msg + '</div>' + '</div>');
+            }
+            window.console&&console.log(data);
+        });
+
+        socket.on('loadMessage', function(data) {
+            if (data.sender === '<%= sender.local.email %>') {
+                $chat.append('<div class="container">' + '<div class="well sender"><span class="author">' + data.sender + '</span><br/>' + data.msg + '</div>' + '</div>');
+            } else {
+                $chat.append('<div class="container">' + '<div class="well recipient"><span class="author">' + data.sender + '</span><br/>' + data.msg + '</div>' + '</div>');
+            }
+//            $chat.append('<div class="well">' + data.sender + ' -----> ' + data.recipient + '<br/>' + data.msg + '</div>');
+            window.console&&console.log(data);
+        });
+    });
+</script>
+
+<% include ../partials/footer %>

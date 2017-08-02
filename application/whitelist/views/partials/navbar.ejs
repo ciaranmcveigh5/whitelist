@@ -7,9 +7,13 @@
         </div>
         <div class="collapse navbar-collapse">
             <ul class="nav navbar-nav navbar-right">
-                <li><a href="/register"><i class="fa fa-user-plus" aria-hidden="true"></i> Sign Up</a></li>
-                <li><a href="/login">Login</a></li>
-                <li><a href="/logout">Logout</a></li>
+                <% if(!currentUser) { %>
+                    <li><a href="/users/register"><i class="fa fa-user-plus" aria-hidden="true"></i> Sign Up</a></li>
+                    <li><a href="/users/login">Login</a></li>
+                <% } else { %>
+                    <li><a href="/users/<%= currentUser.id %>/profile"><%= currentUser.local.email %></a></li>
+                    <li><a href="/users/<%= currentUser.id %>/logout">Logout</a></li>
+                <% } %>
             </ul>
         </div>
     </div>

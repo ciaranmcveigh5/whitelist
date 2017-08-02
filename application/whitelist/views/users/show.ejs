@@ -1,0 +1,36 @@
+<% include ../partials/header %>
+<% include ../partials/navbar %>
+
+<h2>Search Results</h2>
+
+<% if(noMatch) { %>
+<h4><%= noMatch %></h4>
+<% } %>
+
+<% users.forEach(function(user) { %>
+
+<div class="container">
+
+
+    <div class="row">
+        <div class="col-sm-6">
+            <div class="well">
+
+                <p>
+                    <strong>id</strong>: <%= user._id %><br>
+                    <strong>email</strong>: <%= user.local.email %><br>
+                    <strong>password</strong>: <%= user.local.password %>
+                </p>
+
+                <form method="get" action="/users/<%= me.id %>/messages/<%= user._id %>">
+                    <button type="submit" class="btn btn-primary">Message</button>
+                </form>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+<% }); %>
+<% include ../partials/footer %>
